@@ -31,6 +31,12 @@ def new_endpoint_1(req, res):
     res.text = "new endpoint 1"
 
 
+# New endpoint 2
+@api.route("/new-endpoint-2")
+def new_endpoint_1(req, res):
+    res.text = "new endpoint 2"
+
+
 if __name__ == "__main__":
     port = os.getenv("APPA_PORT", "8080")
     api.run(address="0.0.0.0", port=int(port))

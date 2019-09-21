@@ -12,3 +12,5 @@
   * Return a message from an external serivce `debugkit`
 * `/new-endpoint-1`
   * New!
+* `/new-endpoint-2`
+  * New New!
