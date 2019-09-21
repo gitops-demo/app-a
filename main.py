@@ -24,6 +24,8 @@ def app_b(req, res):
     r = httpx.get("http://" + app_b_svc)
     res.text = r.text
 
+@api.route("/new-endpoint1")
+    res.text = "new endpoint 1"
 
 if __name__ == "__main__":
     port = os.getenv("APPA_PORT", "8080")
