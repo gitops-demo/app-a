@@ -1,0 +1,55 @@
+language: python
+
+services:
+- docker
+
+before_script:
+- export COMMITTER_EMAIL="$(git log -1 ${TRAVIS_COMMIT} --pretty='%cE')"
+- export AUTHOR_NAME="$(git log -1 ${TRAVIS_COMMIT} --pretty='%aN')"
+
+script:
+# Docker Image
+- |
+  echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USER}" --password-stdin
+  docker build -t "gitopsdemo/app-a:${TRAVIS_COMMIT}" .
+  docker push "gitopsdemo/app-a:${TRAVIS_COMMIT}"
+
+# Deploy Request
+- |
+  wget "https://github.com/github/hub/releases/download/v2.12.4/hub-linux-amd64-2.12.4.tgz" -O - | tar xz
+  sudo install -m 755 hub-linux-amd64-2.12.4/bin/hub /usr/local/bin
+
+  CONF_DIR="${HOME}/.config"
+  mkdir -p "${CONF_DIR}"
+  echo "https://${GITHUB_TOKEN}:@github.com" > "${CONF_DIR}/git-credential"
+
+  cat << EOF > "${CONF_DIR}/hub"
+  github.com:
+  - protocol: https
+    user: ${GITHUB_USER}
+    oauth_token: ${GITHUB_TOKEN}
+  EOF
+
+  git config --global user.name "${AUTHOR_NAME}"
+  git config --global user.email "${COMMITTER_EMAIL}"
+  git config --global hub.protocol "https"
+  git config --global credential.helper "store --file=${CONF_DIR}/git-credential"
+
+  git clone "https://github.com/gitops-demo/manifests.git" manifests
+  cd manifests
+  git checkout dev
+  git checkout -b "ci-build/app-a/${TRAVIS_COMMIT}"
+  cd app-a/values
+  for f in *-app-a.yaml
+  do
+    PREV_COMMIT=$(grep -oP "(?<=repository: gitopsdemo/app-a:).+$" "${f}")
+    sed -i -e "s!repository: gitopsdemo/app-a:.\+\$!repository: gitopsdemo/app-a:${TRAVIS_COMMIT}!" "${f}"
+  done
+
+  COMMIT_MSG="gitops-demo/app-a/${PREV_COMMIT}...${TRAVIS_COMMIT}"
+  PR_MSG="[DEPLOY REQUEST] gitops-demo/app-a\n\n[${PREV_COMMIT}...${TRAVIS_COMMIT}](https://github.com/gitops-demo/app-a/compare/${PREV_COMMIT}...${TRAVIS_COMMIT})"
+  git add .
+  git commit -m "${COMMIT_MSG}"
+  echo -e "${PR_MSG}" | hub pull-request --push -b dev -F -
+
+if: branch == master AND type == push
