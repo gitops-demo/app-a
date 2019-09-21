@@ -14,3 +14,5 @@
   * New!
 * `/new-endpoint-2`
   * New New!
+* `/new-endpoint-3`
+  * New New New!
